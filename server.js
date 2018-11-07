@@ -8,7 +8,7 @@ class Server {
     this.server = null
   }
 
-  listen() {
+  listen () {
     const self = this
     this.server = net.createServer((socket) => {
       socket.on('data', (data) => {
@@ -21,30 +21,49 @@ class Server {
           case "list":
             self.handleList(socket, reqObj); break
           default:
+            socket.end()
             break
         }
-        socket.end()
       })
     })
 
     this.server.listen(this.sockFile)
   }
 
-  handleStart(socket, reqObj) {
-    const options = Object.assign(reqObj)
-    this.master.create(command, reqObj)
-    socket.end()
+  handleStart (socket, reqObj) {
+    const { command, id } = reqObj
+    let _id = id
+    if (id) {
+      this.master.start(id)
+    } else {
+      const inst = this.master.create(command, reqObj)
+      _id = inst.id
+    }
+
+    socket.end(JSON.stringify({ id: _id }))
   }
 
-  handleStop(socket, reqObj) {
+  handleStop (socket, reqObj) {
     const { id } = reqObj
     this.master.stop(id, () => {
-      socket.end()
+      socket.end(JSON.stringify({ id }))
     })
   }
 
-  handleList(socket, reqObj) {
-    // TODO
+  handleList (socket, reqObj) {
+    const { id } = reqObj
+    const data = []
+    const master = this.master
+    if (id) {
+      data.push(master.getInfo(id))
+    } else {
+      const { instances } = master
+      Object.keys(instances).forEach((id) => {
+        data.push(master.getInfo(id))
+      })
+    }
+    console.log(data)
+    socket.end(JSON.stringify(data))
   }
 }
 

@@ -16,6 +16,8 @@ class Instance {
     // mark this flag to true means service
     this.restartFlag = false
     this.forceStopFlag = false
+
+    this.isRunning = false
     // event handler
     this._emitter = null
     // file streams
@@ -25,7 +27,7 @@ class Instance {
     this._init()
   }
 
-  _init() {
+  _init () {
     const { stdoutFile, stderrFile } = this.options
     // open files
     if (stdoutFile) {
@@ -36,11 +38,11 @@ class Instance {
     }
   }
 
-  setEmitter(emitter) {
+  setEmitter (emitter) {
     this._emitter = emitter
   }
 
-  start() {
+  start () {
     const { cwd } = this.options
     this.process = new Process(this.command, cwd)
     // bind evenets    
@@ -49,19 +51,16 @@ class Instance {
     this.process.onStderrData = this._onStderrData.bind(this)
     // spawn process
     this.process.spawn()
+    this.isRunning = true
   }
 
-  stop(signal = 'SIGINT') {
+  stop (signal = 'SIGINT') {
     this.forceStopFlag = true
     this.process.kill(signal)
   }
 
-  restart(signal = 'SIGINT') {
-    this.restartFlag = true
-    this.stop(signal)
-  }
   // close file streams, clear handles, etc.
-  close() {
+  close () {
     if (this._stdoutStream)
       this._stdoutStream.close()
     if (this._stderrStream)
@@ -69,7 +68,9 @@ class Instance {
   }
 
   // event handlers
-  _onExit(code, signal) {
+  _onExit (code, signal) {
+    this.isRunning = false
+
     this._emitter.emit('exit', this.id, code, signal)
     if (!this.forceStopFlag && (this.restartFlag || this.options.autoRestart)) {
       this.restartFlag = false
@@ -78,14 +79,14 @@ class Instance {
     this.forceStopFlag = false
   }
 
-  _onStdoutData(data) {
+  _onStdoutData (data) {
     this._emitter.emit('stdout_data', this.id, data)
     if (this._stdoutStream) {
       this._stdoutStream.write(data)
     }
   }
 
-  _onStderrData(data) {
+  _onStderrData (data) {
     this._emitter.emit('stdout_error', this.id, data)
     if (this._stderrStream) {
       this._stderrStream.write(data)

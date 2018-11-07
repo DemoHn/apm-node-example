@@ -11,7 +11,7 @@ class Master {
     this._bindEvents()
   }
 
-  create(command, options = {}) {
+  create (command, options = {}) {
     this.counter += 1
     const counter = this.counter
 
@@ -24,7 +24,7 @@ class Master {
     return instance
   }
 
-  start(id) {
+  start (id) {
     const instance = this.instances[id]
     if (instance) {
       instance.start()
@@ -33,7 +33,7 @@ class Master {
     }
   }
 
-  stop(id, callback) {
+  stop (id, callback) {
     const instance = this.instances[id]
     if (instance) {
       instance.stop()
@@ -46,7 +46,19 @@ class Master {
     }
   }
 
-  _bindEvents() {
+  getInfo (id) {
+    const instance = this.instances[id]
+    if (instance) {
+      return {
+        id,
+        status: instance.isRunning ? 'RUNNING' : 'STOPPED',
+        pid: instance.isRunning ? instance.process.getPID() : null,
+      }
+    }
+    return null
+  }
+
+  _bindEvents () {
     const eventHandler = this.eventHandler
     eventHandler.on('exit', (id, code) => {
       eventHandler.emit(`exit_${id}`)
