@@ -1,8 +1,9 @@
 const yargs = require('yargs')
 const net = require('net')
-const cp = require('child_process')
+const daemonize2 = require("daemonize2")
 
 const sockFile = '/tmp/apm.sock'
+const pidFile = '/tmp/apm.pid'
 yargs
   .command('start', 'start (create) an instance', (yargs) => {
     return yargs
@@ -25,18 +26,24 @@ yargs
   .help()
   .argv
 
-function createDaemon() {
-  cp.execSync('node ' + __dirname + '/index.js &')
+function createDaemon () {
+  var daemon = daemonize2.setup({
+    main: 'index.js',
+    name: 'apm',
+    pidfile: pidFile,
+  })
+
+  daemon.start()
 }
 
-function startHandler(args) {
+function startHandler (args) {
   createDaemon()
 }
 
-function stopHandler(args) {
+function stopHandler (args) {
 
 }
 
-function listHandler(args) {
+function listHandler (args) {
 
 }
