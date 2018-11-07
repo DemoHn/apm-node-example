@@ -1,11 +1,14 @@
 const net = require('net')
 const fs = require('fs')
+const EventEmitter = require('events')
 const Instance = require('./instance')
 
 class Master {
   constructor() {
     this.counter = 0
+    this.eventHandler = new EventEmitter()
     this.instances = {}
+    this._bindEvents()
   }
 
   create(command, options = {}) {
@@ -13,58 +16,45 @@ class Master {
     const counter = this.counter
 
     const instance = new Instance(counter, command, options)
+    // bind event handlers
+    instance.setEmitter(this.eventHandler)
+    instance.start()
+
     this.instances[counter] = instance
     return instance
   }
 
-  delete(id) {
-    delete this.instances[id]
+  start(id) {
+    const instance = this.instances[id]
+    if (instance) {
+      instance.start()
+    } else {
+      console.log(`[apm] start instance: ${id} not found`)
+    }
   }
 
-  // listening socket to recv data
-  listen(sockFile) {
-    const self = this
-    const server = net.createServer((socket) => {
-      socket.on('data', (data) => {
-        // TODO: should handle data after stream is end
-        // to ensure the data is complete!
-        self.handleRequest(data, () => {
-          socket.end()
-        })        
-      })      
+  stop(id, callback) {
+    const instance = this.instances[id]
+    if (instance) {
+      instance.stop()
+      this.eventHandler.once(`exit_${id}`, (id, code, signal) => {
+        callback()
+      })
+    } else {
+      console.log(`[apm] stop instance: ${id} not found`)
+      callback()
+    }
+  }
+
+  _bindEvents() {
+    const eventHandler = this.eventHandler
+    eventHandler.on('exit', (id, code) => {
+      eventHandler.emit(`exit_${id}`)
     })
 
-    server.listen(sockFile)
-  }
-  
-  handleRequest(data, callback) {
-    const self = this
-    const reqObj = JSON.parse(data.toString())
-    switch (reqObj.event) {
-      case "start": {
-        const { command, cwd, env, autoRestart} = reqObj
-        const instance = this.create(command, {
-          cwd, env, autoRestart
-        })
-        instance.start()
-        callback()
-        break
-      }      
-      case "stop": {
-        const { id } = reqObj
-        const instance = this.instances[id]
-        if (instance) {
-          instance.stop('SIGINT', () => {
-            self.delete(id)
-          })          
-          
-        }      
-      }
-
-      default:
-        callback()
-        break
-    }
+    eventHandler.on('stdout_data', (id, data) => {
+      console.log(`stdout: ${data.toString()}`)
+    })
   }
 }
 

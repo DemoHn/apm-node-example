@@ -6,10 +6,10 @@ class Process {
     this.executor = null
     this.spawnParams = [command, env, cwd]
     // event handlers     
-    onStdoutData: () => { }
-    onStderrData: () => { }
-    onError: () => { }
-    onExit: () => { }
+    this.onStdoutData = (data) => { }
+    this.onStderrData = (data) => { }
+    this.onError = () => { }
+    this.onExit = () => { }
   }
 
   spawn() {
@@ -31,7 +31,6 @@ class Process {
   }
 
   _bindEvents() {
-    const { onStdoutData, onStderrData, onError, onExit } = this.eventHandlers
     const executor = this.executor
     // bind events with corresponded handlers
     executor.stdout.on('data', this.onStdoutData)
