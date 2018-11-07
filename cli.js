@@ -1,5 +1,6 @@
 const yargs = require('yargs')
 const net = require('net')
+const cp = require('child_process')
 
 const sockFile = '/tmp/apm.sock'
 yargs
@@ -24,8 +25,12 @@ yargs
   .help()
   .argv
 
-function startHandler(args) {
+function createDaemon() {
+  cp.execSync('node ' + __dirname + '/index.js &')
+}
 
+function startHandler(args) {
+  createDaemon()
 }
 
 function stopHandler(args) {

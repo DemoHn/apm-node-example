@@ -6,7 +6,6 @@ class Instance {
     this.command = command
     // instance options
     this.options = Object.assign({
-      env: null,
       cwd: null,
       stdoutFile: null,
       stderrFile: null,
@@ -42,8 +41,8 @@ class Instance {
   }
 
   start() {
-    const { env, cwd } = this.options
-    this.process = new Process(this.command, env, cwd)
+    const { cwd } = this.options
+    this.process = new Process(this.command, cwd)
     // bind evenets    
     this.process.onExit = this._onExit.bind(this)
     this.process.onStdoutData = this._onStdoutData.bind(this)

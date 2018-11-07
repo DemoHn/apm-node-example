@@ -27,7 +27,7 @@ class Server {
       })
     })
 
-    this.server.listen(sockFile)
+    this.server.listen(this.sockFile)
   }
 
   handleStart(socket, reqObj) {
