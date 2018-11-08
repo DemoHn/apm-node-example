@@ -1,21 +1,20 @@
 const Master = require('./master')
-const Server = require('./server')
 const fs = require('fs')
 
 const sockFile = '/tmp/apm.sock'
 
-function main () {
-  const master = new Master()
-  const server = new Server(sockFile, master)
-  server.listen()
+function main() {
+  const master = new Master(sockFile)
+  master.listen()
 
   process.on('SIGINT', () => {
     fs.unlinkSync(sockFile)
     process.exit(0)
   })
 
-  process.on('uncaughtException', () => {
+  process.on('uncaughtException', (err) => {
     fs.unlinkSync(sockFile)
+    console.log(err)
     process.exit(1)
   })
 }

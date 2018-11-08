@@ -4,61 +4,75 @@ const EventEmitter = require('events')
 const Instance = require('./instance')
 
 class Master {
-  constructor() {
-    this.counter = 0
-    this.eventHandler = new EventEmitter()
+  constructor(sockFile) {
+    this.sockFile = sockFile
     this.instances = {}
+    this.eventHandler = new EventEmitter()
+
+    this._counter = 0
     this._bindEvents()
   }
 
-  create (command, options = {}) {
-    this.counter += 1
-    const counter = this.counter
+  listen() {
+    const eventMap = {
+      start: this._handleStart.bind(this),
+      stop: this._handleStop.bind(this),
+      list: this._handleList.bind(this),
+    }
+    const server = net.createServer((socket) => {
+      socket.on('data', (data) => {
+        const reqObj = JSON.parse(data.toString())
+        const handler = eventMap[reqObj.event]
+        if (handler)
+          handler(reqObj, data => socket.end(JSON.stringify(data)))
+      })
+    })
+    server.listen(this.sockFile)
+  }
 
-    const instance = new Instance(counter, command, options)
-    // bind event handlers
+  _handleStart(reqObj, callback) {
+    const { command, id } = reqObj
+    if (id && this.instances[id]) {
+      this.instances[id].start()
+      callback({ id })
+    }
+
+    // create & start instance
+    this._counter += 1
+    const instance = new Instance(this._counter, command, reqObj)
     instance.setEmitter(this.eventHandler)
     instance.start()
-
-    this.instances[counter] = instance
-    return instance
+    // add instance
+    this.instances[this._counter] = instance
+    callback({ id: instance.id })
   }
 
-  start (id) {
-    const instance = this.instances[id]
-    if (instance) {
-      instance.start()
-    } else {
-      console.log(`[apm] start instance: ${id} not found`)
-    }
-  }
-
-  stop (id, callback) {
+  _handleStop(reqObj, callback) {
+    const { id } = reqObj
     const instance = this.instances[id]
     if (instance) {
       instance.stop()
-      this.eventHandler.once(`exit_${id}`, (id, code, signal) => {
-        callback()
+      this.eventHandler.once(`exit_${id}`, () => {
+        callback({ id })
       })
-    } else {
-      console.log(`[apm] stop instance: ${id} not found`)
-      callback()
     }
   }
 
-  getInfo (id) {
-    const instance = this.instances[id]
-    if (instance) {
-      return {
+  _handleList(reqObj, callback) {
+    const { id } = reqObj
+    const list = []
+    Object.keys(this.instances).forEach((id) => {
+      const instance = this.instances[id]
+      list.push({
         id,
         status: instance.isRunning ? 'RUNNING' : 'STOPPED',
         pid: instance.isRunning ? instance.process.getPID() : null,
-      }
-    }
-    return null
+      })
+    })
+    callback(list)
   }
 
-  _bindEvents () {
+  _bindEvents() {
     const eventHandler = this.eventHandler
     eventHandler.on('exit', (id, code) => {
       eventHandler.emit(`exit_${id}`)

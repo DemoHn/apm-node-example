@@ -5,14 +5,13 @@ class Process {
     // executor object
     this.executor = null
     this.spawnParams = [command, cwd]
-    // event handlers     
+    // event handlers
     this.onStdoutData = (data) => { }
     this.onStderrData = (data) => { }
     this.onExit = () => { }
   }
 
   spawn() {
-    // TODO: for commands like "ls -l 'Documents and Settings'" it will be failed!
     const [command, cwd] = this.spawnParams
 
     const args = command.split(' ')
