@@ -35,16 +35,16 @@ class Master {
     if (id && this.instances[id]) {
       this.instances[id].start()
       callback({ id })
+    } else {
+      // create & start instance
+      this._counter += 1
+      const instance = new Instance(this._counter, command, reqObj)
+      instance.setEmitter(this.eventHandler)
+      instance.start()
+      // add instance
+      this.instances[this._counter] = instance
+      callback({ id: instance.id })
     }
-
-    // create & start instance
-    this._counter += 1
-    const instance = new Instance(this._counter, command, reqObj)
-    instance.setEmitter(this.eventHandler)
-    instance.start()
-    // add instance
-    this.instances[this._counter] = instance
-    callback({ id: instance.id })
   }
 
   _handleStop(reqObj, callback) {
