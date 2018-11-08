@@ -3,94 +3,52 @@ const fs = require('fs')
 class Instance {
   constructor(id, command, options = {}) {
     this.id = id
-    this.command = command
-    // instance options
     this.options = Object.assign({
+      command,
       cwd: null,
       stdoutFile: null,
       stderrFile: null,
       autoRestart: true,
     }, options)
-    // process instance
     this.process = null
-    // mark this flag to true means service
-    this.restartFlag = false
-    this.forceStopFlag = false
-
     this.isRunning = false
-    // event handler
+    // flags
     this._emitter = null
-    // file streams
-    this._stdoutStream = null
-    this._stderrStream = null
-    // init
-    this._init()
+    this._restartFlag = false
+    this._forceStopFlag = false
   }
 
-  _init () {
-    const { stdoutFile, stderrFile } = this.options
-    // open files
-    if (stdoutFile) {
-      this._stdoutStream = fs.createWriteStream(stdoutFile)
-    }
-    if (stderrFile) {
-      this._stderrStream = fs.createWriteStream(stderrFile)
-    }
-  }
-
-  setEmitter (emitter) {
+  setEmitter(emitter) {
     this._emitter = emitter
   }
 
-  start () {
-    const { cwd } = this.options
-    this.process = new Process(this.command, cwd)
-    // bind evenets    
-    this.process.onExit = this._onExit.bind(this)
-    this.process.onStdoutData = this._onStdoutData.bind(this)
-    this.process.onStderrData = this._onStderrData.bind(this)
+  start() {
+    const { cwd, command } = this.options
+    const self = this
+    const proc = this.process = new Process(command, cwd)
+    // bind evenets
+    proc.onStdoutData = (data) => self._emitter.emit('stdout_data', self.id, data)
+    proc.onStderrData = (data) => self._emitter.emit('stderr_data', self.id, data)
+    proc.onExit = this._onExit.bind(this)
     // spawn process
     this.process.spawn()
     this.isRunning = true
   }
 
-  stop (signal = 'SIGINT') {
-    this.forceStopFlag = true
+  stop(signal) {
+    this._forceStopFlag = true
     this.process.kill(signal)
   }
 
-  // close file streams, clear handles, etc.
-  close () {
-    if (this._stdoutStream)
-      this._stdoutStream.close()
-    if (this._stderrStream)
-      this._stderrStream.close()
-  }
-
   // event handlers
-  _onExit (code, signal) {
+  _onExit(code, signal) {
     this.isRunning = false
-
     this._emitter.emit('exit', this.id, code, signal)
-    if (!this.forceStopFlag && (this.restartFlag || this.options.autoRestart)) {
-      this.restartFlag = false
+    if (!this._forceStopFlag && (this._restartFlag || this.options.autoRestart)) {
+      this._restartFlag = false
       this.start()
     }
-    this.forceStopFlag = false
-  }
-
-  _onStdoutData (data) {
-    this._emitter.emit('stdout_data', this.id, data)
-    if (this._stdoutStream) {
-      this._stdoutStream.write(data)
-    }
-  }
-
-  _onStderrData (data) {
-    this._emitter.emit('stdout_error', this.id, data)
-    if (this._stderrStream) {
-      this._stderrStream.write(data)
-    }
+    this._forceStopFlag = false
   }
 }
 

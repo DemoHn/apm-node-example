@@ -11,7 +11,7 @@ class Process {
     this.onExit = () => { }
   }
 
-  spawn () {
+  spawn() {
     // TODO: for commands like "ls -l 'Documents and Settings'" it will be failed!
     const [command, cwd] = this.spawnParams
 
@@ -20,27 +20,21 @@ class Process {
     const options = {
       cwd: cwd,
     }
-    this.executor = cp.spawn(cmd, args, options)
-    this._bindEvents()
+    const executor = this.executor = cp.spawn(cmd, args, options)
+    executor.stdout.on('data', this.onStdoutData)
+    executor.stderr.on('data', this.onStderrData)
+    executor.on('exit', this.onExit)
   }
 
-  kill (signal = 'SIGINT') {
+  kill(signal = 'SIGINT') {
     this.executor.kill(signal)
   }
 
-  getPID () {
+  getPID() {
     if (this.executor) {
       return this.executor.pid
     }
     return null
-  }
-
-  _bindEvents () {
-    const executor = this.executor
-    // bind events with corresponded handlers
-    executor.stdout.on('data', this.onStdoutData)
-    executor.stderr.on('data', this.onStderrData)
-    executor.on('exit', this.onExit)
   }
 }
 
